@@ -3,21 +3,59 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/bubbles/textinput"
+)
+
+type AccountType string
+
+const (
+	Asset     AccountType = "Asset"
+	Liability AccountType = "Liability"
+	Equity    AccountType = "Equity"
+)
+
+type Account struct {
+	Id   string
+	Name string
+	Type AccountType
+}
+
+type Posting struct {
+	AccountId string
+	Amount    float64 // Positive for Debit, Negative for Credit? or explict db/cr fields
+}
+
+type Transaction struct {
+	Date        time.Time
+	Description string
+	Postings    []Posting // must sum to 0 to balance
+}
+
+type Ledger struct {
+	Accounts     map[string]*Account
+	Transactions []Transaction
+}
+
+type sessionState int
+
+const (
+	listView sessionState = iota
+	formView
 )
 
 type model struct {
-	choices  []string
-	cursor   int
-	selected map[int]struct{}
+	state        sessionState
+	ledger       Ledger
+	inputs       []textinput.Model // form inputs for Description, Account1, Account2, Amount
+	focusedInput int
+	err          error
 }
 
 func initialModel() model {
-	return model{
-		choices:  []string{"Buy carrots", "Buy celery", "Buy potatoes"},
-		selected: make(map[int]struct{}),
-	}
+	return model{}
 }
 
 func (m model) Init() tea.Cmd {
@@ -25,50 +63,45 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyPressMsg:
-		switch msg.String() {
-		case "ctrl+c", "q":
-			return m, tea.Quit
-		case "up", "k":
-			if m.cursor > 0 {
-				m.cursor--
-			}
-		case "down", "j":
-			if m.cursor < len(m.choices)-1 {
-				m.cursor++
-			}
-		case "enter", "space":
-			_, ok := m.selected[m.cursor]
-			if ok {
-				delete(m.selected, m.cursor)
-			} else {
-				m.selected[m.cursor] = struct{}{}
+	switch m.state {
+	case formView:
+		switch msg := msg.(type) {
+		case tea.KeyPressMsg:
+			switch msg.String() {
+			case "q":
+				return m, tea.Quit
+			case "1":
+				m.state = listView
 			}
 		}
+
+	case listView:
+		switch msg := msg.(type) {
+		case tea.KeyPressMsg:
+			switch msg.String() {
+			case "q":
+				return m, tea.Quit
+			case "1":
+				m.state = formView
+			}
+		}
+	default:
+		panic(fmt.Sprintf("unexpected main.sessionState: %#v", m.state))
 	}
+
 	return m, nil
 }
 
 func (m model) View() tea.View {
-	s := "What kind of bubble tea would you like to order?\r\n\r\n"
-
-	for i, choice := range m.choices {
-		cursor := " "
-		if m.cursor == i {
-			cursor = ">"
-		}
-
-		checked := " "
-		if _, ok := m.selected[i]; ok {
-			checked = "x"
-		}
-
-		s += fmt.Sprintf("%s [%s] %s\r\n", cursor, checked, choice)
+	s := "1 to switch views, q to quit\r\n\r\n"
+	switch m.state {
+	case formView:
+		s += "formview"
+	case listView:
+		s += "listview"
+	default:
+		panic(fmt.Sprintf("unexpected main.sessionState: %#v", m.state))
 	}
-
-	s += "\r\nPress q to quit.\r\n"
-
 	return tea.NewView(s)
 }
 
