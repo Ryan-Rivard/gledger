@@ -22,14 +22,20 @@ const (
 // ledger updates happen in place
 type model struct {
 	state        sessionState
-	ledger       *core.Ledger // mutate the ledger in place
+	ledger       *core.Ledger      // mutate the ledger in place
 	inputs       []textinput.Model // form inputs for Description, Account1, Account2, Amount
 	focusedInput int
 	err          error
 }
 
 func InitialModel() model {
-	return model{}
+	return model{
+		state:        0,
+		ledger:       &core.Ledger{},
+		inputs:       []textinput.Model{},
+		focusedInput: 0,
+		err:          nil,
+	}
 }
 
 func (m model) Init() tea.Cmd {
