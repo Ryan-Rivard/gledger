@@ -5,13 +5,14 @@ import (
 	"os"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/Ryan-Rivard/gledger/ui"
 )
 
 func main() {
-	p := tea.NewProgram(ui.InitialModel())
+	// Initialize UI program state context cleanly from layout definition module
+	p := tea.NewProgram(NewModel())
+
 	if _, err := p.Run(); err != nil {
-		fmt.Printf("Alas, there's been an error: %v", err)
+		fmt.Printf("Fatal execution crash: %v\n", err)
 		os.Exit(1)
 	}
 }
